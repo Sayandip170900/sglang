@@ -10,7 +10,6 @@ from typing import Dict, Optional, Tuple
 _prefetch_status: Dict[str, str] = {}
 _prefetch_threads: Dict[str, threading.Thread] = {}
 
-# Private
 def _key(repo_id: str, revision: Optional[str]) -> str:
     return f"{repo_id}:{revision or 'main'}"
 
@@ -95,9 +94,6 @@ def _resolve_repo_rev_localdir(
     served_model_name: Optional[str],
     cli_revision: Optional[str],
 ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
-    """
-    Returns (repo_id, revision, local_dir_for_dl)
-    """
     if model_path:
         p = Path(model_path)
         if p.exists():
@@ -209,7 +205,7 @@ def _cleanup_dead_threads():
     for k in dead_keys:
         del _prefetch_threads[k]
 
-def _maybe_kick(
+def _maybe_start_prefetch(
     repo_or_path: Optional[str],
     served_model_name: Optional[str],
     revision: Optional[str],
@@ -255,6 +251,7 @@ def _maybe_kick(
         print(f"[prefetch] skip: lock held for {k}", flush=True)
         return
 
+    _prefetch_status[k] = "downloading"
     t = threading.Thread(
         target=_snap_dl,
         args=(repo_id, rev, cache_dir, allow_patterns, local_dir_for_dl),
@@ -264,7 +261,6 @@ def _maybe_kick(
     _prefetch_threads[k] = t
     t.start()
 
-# Public
 def early_prefetch(
     model_path: Optional[str],
     served_model_name: Optional[str],
@@ -275,9 +271,9 @@ def early_prefetch(
     allow_patterns: Optional[Tuple[str, ...]] = None,
 ):
     try:
-        _maybe_kick(model_path, served_model_name, revision, tp_size, allow_patterns)
+        _maybe_start_prefetch(model_path, served_model_name, revision, tp_size, allow_patterns)
         if spec_algo and spec_algo.lower() == "eagle" and spec_draft_model_path:
-            _maybe_kick(spec_draft_model_path, None, None, tp_size, allow_patterns)
+            _maybe_start_prefetch(spec_draft_model_path, None, None, tp_size, allow_patterns)
     except Exception:
         print("[prefetch] early_prefetch failed:\n" + traceback.format_exc(), flush=True)
 
@@ -293,7 +289,10 @@ def wait_for_prefetch(
 
     k = _key(repo_id, rev)
     if _prefetch_status.get(k) not in ("downloading", "complete", "failed"):
-        return True
+        if k in _prefetch_threads:
+            _prefetch_status[k] = "downloading"
+        else:
+            return True
 
     start = time.time()
     while time.time() - start < timeout:
