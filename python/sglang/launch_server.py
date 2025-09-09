@@ -6,9 +6,20 @@ import sys
 from sglang.srt.entrypoints.http_server import launch_server
 from sglang.srt.server_args import prepare_server_args
 from sglang.srt.utils import kill_process_tree
+from sglang.srt.model_loader.prefetch import early_prefetch
+
 
 if __name__ == "__main__":
     server_args = prepare_server_args(sys.argv[1:])
+
+    early_prefetch(
+        model_path=server_args.model_path,
+        served_model_name=server_args.served_model_name,
+        revision=server_args.revision,
+        spec_algo=server_args.speculative_algorithm,
+        spec_draft_model_path=server_args.speculative_draft_model_path,
+        tp_size=getattr(server_args, "tp_size", getattr(server_args, "tp", None)),
+    )
 
     try:
         launch_server(server_args)

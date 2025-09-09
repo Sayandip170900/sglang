@@ -179,6 +179,16 @@ if __name__ == "__main__":
     server_args = ServerArgs.from_cli_args(args)
     compile_args = CompileArgs.from_cli_args(args)
 
+    from sglang.srt.model_loader.prefetch import early_prefetch
+    early_prefetch(
+        model_path=server_args.model_path,
+        served_model_name=server_args.served_model_name,
+        revision=server_args.revision,
+        spec_algo=server_args.speculative_algorithm,
+        spec_draft_model_path=server_args.speculative_draft_model_path,
+        tp_size=getattr(server_args, "tp_size", getattr(server_args, "tp", None)),
+    )
+
     refine_server_args(server_args, compile_args)
 
     run_compile(server_args, compile_args)
