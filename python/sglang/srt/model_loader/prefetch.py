@@ -303,13 +303,3 @@ def wait_for_prefetch(
         time.sleep(0.5)
     print(f"[prefetch] timeout waiting for {k}", flush=True)
     return False
-
-def get_prefetch_status(
-    model_path: Optional[str],
-    served_model_name: Optional[str],
-    revision: Optional[str],
-) -> str:
-    repo_id, rev, _ = _resolve_repo_rev_localdir(model_path, served_model_name, revision)
-    if not repo_id:
-        return "unknown"
-    return _prefetch_status.get(_key(repo_id, rev), "unknown")

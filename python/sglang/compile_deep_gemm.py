@@ -179,7 +179,7 @@ if __name__ == "__main__":
     server_args = ServerArgs.from_cli_args(args)
     compile_args = CompileArgs.from_cli_args(args)
 
-    from sglang.srt.model_loader.prefetch import early_prefetch
+    from sglang.srt.model_loader.prefetch import early_prefetch, wait_for_prefetch
     early_prefetch(
         model_path=server_args.model_path,
         served_model_name=server_args.served_model_name,
@@ -188,6 +188,16 @@ if __name__ == "__main__":
         spec_draft_model_path=server_args.speculative_draft_model_path,
         tp_size=getattr(server_args, "tp_size", getattr(server_args, "tp", None)),
     )
+
+    timeout = float(os.getenv("SGLANG_PREFETCH_TIMEOUT_SEC", "21600"))
+    ok = wait_for_prefetch(
+        model_path=server_args.model_path,
+        served_model_name=server_args.served_model_name,
+        revision=server_args.revision,
+        timeout=timeout,
+    )
+    if not ok:
+        raise RuntimeError("Prefetch failed or timed out; refusing to start")
 
     refine_server_args(server_args, compile_args)
 
