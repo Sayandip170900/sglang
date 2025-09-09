@@ -21,16 +21,6 @@ if __name__ == "__main__":
         tp_size=getattr(server_args, "tp_size", getattr(server_args, "tp", None)),
     )
 
-    timeout = float(os.getenv("SGLANG_PREFETCH_TIMEOUT_SEC", "21600"))
-    ok = wait_for_prefetch(
-        model_path=server_args.model_path,
-        served_model_name=server_args.served_model_name,
-        revision=server_args.revision,
-        timeout=timeout,
-    )
-    if not ok:
-        raise RuntimeError("Prefetch failed or timed out; refusing to start")
-
     try:
         launch_server(server_args)
     finally:
